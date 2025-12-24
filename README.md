@@ -2,151 +2,265 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bolão Mega da Virada</title>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-    
+
     <style>
         :root {
             --primary: #1e3c72;
             --secondary: #2a5298;
             --success: #28a745;
             --danger: #dc3545;
-            --warning: #ffc107;
+            --bg: #f0f2f5;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
-        body { background: #f0f2f5; padding: 10px; }
-        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 20px; shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         
-        /* UI Elements */
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        body { 
+            background: var(--bg); 
+            display: flex; 
+            justify-content: center; 
+            min-height: 100vh;
+        }
+
+        /* Layout Responsivo Base */
+        .app-container {
+            width: 100%;
+            max-width: 500px; /* Largura de um celular grande */
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+        }
+
+        .content { padding: 20px; flex: 1; }
+
+        /* Estilo dos Inputs */
+        input {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px; /* Evita zoom no iPhone */
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 10px;
+        }
+
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
         .btn-danger { background: var(--danger); color: white; }
-        
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; }
-        
-        /* Grid Mega Sena */
-        .numero-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 5px; margin: 15px 0; }
-        .num-btn { aspect-ratio: 1; border: 1px solid #ddd; border-radius: 50%; background: white; font-weight: bold; cursor: pointer; }
-        .num-btn.selected { background: var(--success); color: white; }
-        .num-btn.duplicate { background: var(--danger); color: white; animation: shake 0.5s; }
 
-        /* Tabs */
-        .tabs { display: flex; gap: 5px; margin-bottom: 20px; overflow-x: auto; }
-        .tab { padding: 10px 15px; background: #eee; border-radius: 20px; cursor: pointer; white-space: nowrap; font-size: 14px; }
-        .tab.active { background: var(--primary); color: white; }
+        /* Grid da Mega Sena */
+        .numero-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            margin: 20px 0;
+        }
 
-        .card-aposta { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 5px solid var(--primary); }
-        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-        
-        @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-5px);} 75% {transform: translateX(5px);} }
-        .hidden { display: none; }
+        .num-btn {
+            aspect-ratio: 1;
+            border: 2px solid #eee;
+            border-radius: 50%;
+            background: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .num-btn.selected { background: var(--success); color: white; border-color: #1a6d2c; }
+
+        /* Tabs (Menu Inferior) */
+        .nav-tabs {
+            display: flex;
+            background: white;
+            border-top: 1px solid #eee;
+            padding: 10px 0;
+            position: sticky;
+            bottom: 0;
+        }
+
+        .tab-item {
+            flex: 1;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+        }
+
+        .tab-item.active { color: var(--primary); font-weight: bold; }
+
+        .card-aposta {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border-left: 5px solid var(--primary);
+        }
+
+        .hidden { display: none !important; }
+
+        /* Toast de Alerta */
+        #toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2 id="app-title">🏆 Bolão da Virada</h2>
-    
-    <div id="auth-section">
-        <div id="login-box">
-            <h3>Entrar</h3>
-            <input type="text" id="login-cpf" placeholder="CPF (apenas números)">
+<div class="app-container">
+    <div class="header">
+        <h1>Bolão 2025 🍀</h1>
+        <p id="user-display"></p>
+    </div>
+
+    <div class="content">
+        <div id="section-login">
+            <h3>Acesse sua conta</h3>
+            <input type="number" id="login-cpf" placeholder="CPF (somente números)">
             <input type="password" id="login-pass" placeholder="Senha">
-            <button class="btn btn-primary" onclick="handleLogin()">Entrar</button>
-            <p style="text-align:center; margin-top:15px; font-size:14px;">Não tem conta? <a href="#" onclick="toggleAuth(true)">Cadastre-se</a></p>
+            <button class="btn btn-primary" onclick="handleLogin()">ENTRAR</button>
+            <button class="btn" onclick="toggleView('reg')">Criar nova conta</button>
         </div>
 
-        <div id="register-box" class="hidden">
-            <h3>Cadastro</h3>
+        <div id="section-register" class="hidden">
+            <h3>Cadastro de Participante</h3>
             <input type="text" id="reg-nome" placeholder="Nome Completo">
-            <input type="text" id="reg-cpf" placeholder="CPF">
-            <button class="btn btn-success" onclick="handleRegister()">Gerar Senha e Cadastrar</button>
-            <p style="text-align:center; margin-top:15px; font-size:14px;"><a href="#" onclick="toggleAuth(false)">Voltar ao Login</a></p>
+            <input type="number" id="reg-cpf" placeholder="CPF">
+            <p style="font-size: 12px; color: #666;">*Sua senha será os 5 últimos dígitos do CPF.</p>
+            <button class="btn btn-success" onclick="handleRegister()">CADASTRAR</button>
+            <button class="btn" onclick="toggleView('login')">Voltar ao Login</button>
+        </div>
+
+        <div id="section-app" class="hidden">
+            <div id="msg-pagamento" class="card-aposta" style="background: #fff3cd;">
+                ⚠️ <strong>Aguardando Pagamento:</strong><br>
+                Sua chave PIX: <strong>SUA_CHAVE_AQUI</strong><br>
+                O ADM liberará seu acesso após o PIX.
+            </div>
+
+            <div id="area-jogo" class="hidden">
+                <h4 id="label-cartela">Escolha 6 números</h4>
+                <div class="numero-grid" id="grid-voto"></div>
+                <button class="btn btn-success" onclick="enviarCartela()">ENVIAR CARTELA</button>
+            </div>
+
+            <div id="minhas-apostas-lista"></div>
+        </div>
+
+        <div id="section-lista" class="hidden">
+            <h3>Apostas do Grupo</h3>
+            <div id="lista-geral"></div>
+        </div>
+
+        <div id="section-adm" class="hidden">
+            <h3>Painel do Administrador</h3>
+            <div id="lista-adm-users"></div>
         </div>
     </div>
 
-    <div id="main-app" class="hidden">
-        <div class="tabs">
-            <div class="tab active" onclick="switchTab('minhas')">Minhas Cartelas</div>
-            <div class="tab" onclick="switchTab('acompanhamento')">Participantes</div>
-            <div class="tab" onclick="switchTab('sorteio')">Conferência</div>
-            <div id="adm-tab" class="tab hidden" style="background: #000; color: #fff;" onclick="switchTab('adm')">ADM</div>
-        </div>
-
-        <div id="tab-minhas" class="tab-content">
-            <div id="status-pagamento-msg"></div>
-            <div id="area-jogo" class="hidden">
-                <h4 id="label-cartela">Preencher Cartela 1</h4>
-                <div class="numero-grid" id="grid-voto"></div>
-                <button class="btn btn-success" id="btn-enviar-cartela" onclick="enviarCartela()">Enviar Dezenas</button>
-            </div>
-            <div id="minhas-registradas"></div>
-        </div>
-
-        <div id="tab-acompanhamento" class="tab-content hidden">
-            <button class="btn btn-primary" onclick="exportarPDF()">Baixar PDF das Apostas</button>
-            <div id="lista-geral-apostas" style="margin-top:15px;"></div>
-        </div>
-
-        <div id="tab-sorteio" class="tab-content hidden">
-            <h4>Conferir Resultado</h4>
-            <p style="font-size:12px; color:666;">Insira as 6 dezenas sorteadas:</p>
-            <div id="grid-conferencia" class="numero-grid"></div>
-            <div id="ranking-resultado" style="margin-top:20px;"></div>
-        </div>
-
-        <div id="tab-adm" class="tab-content hidden">
-            <h3>Painel de Controle</h3>
-            <div id="adm-settings" style="background:#eee; padding:10px; border-radius:8px; margin-bottom:15px;">
-                <label><input type="checkbox" id="lock-system" onchange="toggleSystemLock(this.checked)"> Bloquear novos lançamentos</label>
-            </div>
-            <div id="adm-lista-usuarios"></div>
-        </div>
-
-        <button class="btn btn-danger" onclick="logout()" style="margin-top:30px; opacity:0.7">Sair</button>
+    <div id="nav-bar" class="nav-tabs hidden">
+        <div class="tab-item active" onclick="navTo('app')">🏠<br>Início</div>
+        <div class="tab-item" onclick="navTo('lista')">👥<br>Grupo</div>
+        <div id="tab-adm-icon" class="tab-item hidden" onclick="navTo('adm')">⚙️<br>ADM</div>
     </div>
 </div>
 
+<div id="toast" class="hidden"></div>
+
 <script>
-    // --- CONFIGURAÇÃO FIREBASE ---
+    // 1. CONFIGURAÇÃO
     const firebaseConfig = {
         apiKey: "AIzaSyBo8G3ZcWk4EepN0cHdVBtXc7tGOfcw-yg",
         authDomain: "inscricaosinuca.firebaseapp.com",
         projectId: "inscricaosinuca",
-        databaseURL: "https://inscricaosinuca-default-rtdb.firebaseio.com", // Adicione a URL do seu DB aqui
+        databaseURL: "https://inscricaosinuca-default-rtdb.firebaseio.com",
         storageBucket: "inscricaosinuca.firebasestorage.app",
         messagingSenderId: "338241576305",
         appId: "1:338241576305:web:288b6124384c6be4f76ad0"
     };
+
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    const database = firebase.database();
 
     let currentUser = null;
     let selectedNums = [];
-    let systemLocked = false;
     const ADM_CPF = "03454627508";
 
-    // --- AUTENTICAÇÃO ---
+    // 2. FUNÇÕES DE INTERFACE
+    function toggleView(view) {
+        document.getElementById('section-login').classList.add('hidden');
+        document.getElementById('section-register').classList.add('hidden');
+        if(view === 'reg') document.getElementById('section-register').classList.remove('hidden');
+        else document.getElementById('section-login').classList.remove('hidden');
+    }
+
+    function navTo(sec) {
+        document.querySelectorAll('.tab-content, [id^="section-"]').forEach(s => s.classList.add('hidden'));
+        document.getElementById('section-' + sec).classList.remove('hidden');
+        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+    }
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg;
+        t.classList.remove('hidden');
+        setTimeout(() => t.classList.add('hidden'), 3000);
+    }
+
+    // 3. LOGICA DE NEGÓCIO
     function handleRegister() {
         const nome = document.getElementById('reg-nome').value;
-        const cpf = document.getElementById('reg-cpf').value.replace(/\D/g, '');
+        const cpf = document.getElementById('reg-cpf').value;
         
-        if(nome.length < 3 || cpf.length !== 11) return alert("Preencha os dados corretamente!");
-        
+        if(!nome || cpf.length < 11) return alert("Preencha nome e CPF corretamente!");
+
         const senha = cpf.slice(-5);
         
-        db.ref('users/' + cpf).set({
-            nome, cpf, senha,
+        database.ref('participantes/' + cpf).set({
+            nome: nome,
+            cpf: cpf,
+            senha: senha,
             pago: false,
-            cartelas: [],
-            dataCadastro: new Date().toISOString()
+            cartelas: []
         }).then(() => {
-            alert(`Cadastro Realizado!\nUsuário: ${cpf}\nSenha: ${senha}`);
-            toggleAuth(false);
+            alert(`Sucesso! Seu usuário é o CPF e sua senha é: ${senha}`);
+            toggleView('login');
         });
     }
 
@@ -154,176 +268,138 @@
         const cpf = document.getElementById('login-cpf').value;
         const pass = document.getElementById('login-pass').value;
 
-        db.ref('users/' + cpf).once('value', (snapshot) => {
+        database.ref('participantes/' + cpf).once('value').then((snapshot) => {
             const user = snapshot.val();
             if(user && user.senha === pass) {
                 currentUser = user;
-                loginSuccess();
+                startApp();
             } else {
-                alert("CPF ou Senha incorretos!");
+                alert("Dados incorretos!");
             }
         });
     }
 
-    function loginSuccess() {
-        document.getElementById('auth-section').classList.add('hidden');
-        document.getElementById('main-app').classList.remove('hidden');
-        if(currentUser.cpf === ADM_CPF) document.getElementById('adm-tab').classList.remove('hidden');
-        initGameGrid();
-        updateUI();
-        listenToChanges();
+    function startApp() {
+        document.getElementById('section-login').classList.add('hidden');
+        document.getElementById('section-app').classList.remove('hidden');
+        document.getElementById('nav-bar').classList.remove('hidden');
+        document.getElementById('user-display').innerText = "Olá, " + currentUser.nome;
+
+        if(currentUser.cpf === ADM_CPF) {
+            document.getElementById('tab-adm-icon').classList.remove('hidden');
+        }
+
+        renderGrid();
+        checkStatus();
+        listenUpdates();
     }
 
-    // --- LÓGICA DO JOGO ---
-    function initGameGrid() {
+    function renderGrid() {
         const grid = document.getElementById('grid-voto');
         grid.innerHTML = '';
         for(let i=1; i<=60; i++) {
-            const n = i.toString().padStart(2, '0');
             const btn = document.createElement('button');
             btn.className = 'num-btn';
-            btn.innerText = n;
-            btn.onclick = () => selectNum(i, btn);
+            btn.innerText = i.toString().padStart(2, '0');
+            btn.onclick = () => {
+                if(selectedNums.includes(i)) {
+                    selectedNums = selectedNums.filter(n => n !== i);
+                    btn.classList.remove('selected');
+                } else if(selectedNums.length < 6) {
+                    selectedNums.push(i);
+                    btn.classList.add('selected');
+                }
+            };
             grid.appendChild(btn);
         }
     }
 
-    function selectNum(num, btn) {
-        if(selectedNums.includes(num)) {
-            selectedNums = selectedNums.filter(x => x !== num);
-            btn.classList.remove('selected');
-        } else if(selectedNums.length < 6) {
-            selectedNums.push(num);
-            btn.classList.add('selected');
-        }
+    function checkStatus() {
+        database.ref('participantes/' + currentUser.cpf).on('value', snap => {
+            const user = snap.val();
+            if(user.pago) {
+                document.getElementById('msg-pagamento').classList.add('hidden');
+                if((user.cartelas || []).length < 2) {
+                    document.getElementById('area-jogo').classList.remove('hidden');
+                } else {
+                    document.getElementById('area-jogo').innerHTML = "✅ Você já enviou suas 2 cartelas.";
+                }
+            }
+            
+            // Renderiza minhas cartelas
+            const lista = document.getElementById('minhas-apostas-lista');
+            lista.innerHTML = '<h4>Minhas Apostas:</h4>';
+            (user.cartelas || []).forEach(c => {
+                lista.innerHTML += `<div class="card-aposta">${c}</div>`;
+            });
+        });
     }
 
     async function enviarCartela() {
-        if(selectedNums.length < 6) return alert("Selecione 6 dezenas!");
-        
-        const seq = selectedNums.sort((a,b) => a-b).join('-');
-        
-        // Verifica duplicidade no Banco
-        const snapshot = await db.ref('todas_cartelas').once('value');
-        const todas = snapshot.val() || {};
-        
-        if(Object.values(todas).includes(seq)) {
-            alert("ESTA SEQUÊNCIA JÁ EXISTE NO BOLÃO! Escolha outros números.");
-            // Logica para mudar cor (opcional: destacar os botões)
+        if(selectedNums.length < 6) return alert("Selecione 6 números!");
+        const sequencia = selectedNums.sort((a,b) => a-b).join(' - ');
+
+        // Verificar duplicidade no banco todo
+        const snap = await database.ref('participantes').once('value');
+        const todos = snap.val();
+        let duplicado = false;
+
+        Object.values(todos).forEach(u => {
+            if(u.cartelas && u.cartelas.includes(sequencia)) duplicado = true;
+        });
+
+        if(duplicado) {
+            alert("Essa sequência já foi registrada por outra pessoa! Escolha outra.");
             return;
         }
 
-        const numCartelas = (currentUser.cartelas || []).length;
-        if(numCartelas >= 2) return alert("Você já atingiu o limite de 2 cartelas.");
-
-        const updates = {};
-        const cartelaKey = db.ref().child('todas_cartelas').push().key;
-        updates['/todas_cartelas/' + cartelaKey] = seq;
-        
         const novasCartelas = currentUser.cartelas || [];
-        novasCartelas.push(seq);
-        updates['/users/' + currentUser.cpf + '/cartelas'] = novasCartelas;
+        novasCartelas.push(sequencia);
 
-        db.ref().update(updates).then(() => {
-            alert("Cartela registrada!");
+        database.ref('participantes/' + currentUser.cpf).update({
+            cartelas: novasCartelas
+        }).then(() => {
+            showToast("Cartela Enviada!");
             selectedNums = [];
-            initGameGrid();
-            location.reload(); // Simplificação para atualizar estado
+            renderGrid();
         });
     }
 
-    // --- INTERFACE E ATUALIZAÇÕES ---
-    function updateUI() {
-        const statusDiv = document.getElementById('status-pagamento-msg');
-        const areaJogo = document.getElementById('area-jogo');
-        
-        if(!currentUser.pago) {
-            statusDiv.innerHTML = `<div class="card-aposta" style="background:#fff3cd">Aguardando confirmação de pagamento PIX pelo ADM.</div>`;
-            areaJogo.classList.add('hidden');
-        } else {
-            const qtd = (currentUser.cartelas || []).length;
-            if(qtd < 2 && !systemLocked) {
-                areaJogo.classList.remove('hidden');
-                document.getElementById('label-cartela').innerText = `Preencher Cartela ${qtd + 1}`;
-            } else {
-                areaJogo.innerHTML = "<h4>Você já completou suas cartelas ou o prazo encerrou.</h4>";
-            }
-        }
-    }
-
-    function listenToChanges() {
-        // Escuta trava do sistema
-        db.ref('config/locked').on('value', snap => {
-            systemLocked = snap.val();
-        });
-
-        // Escuta participantes para a lista geral
-        db.ref('users').on('value', snap => {
+    function listenUpdates() {
+        database.ref('participantes').on('value', snap => {
             const users = snap.val();
-            renderParticipantes(users);
-            if(currentUser.cpf === ADM_CPF) renderADM(users);
+            const listaGeral = document.getElementById('lista-geral');
+            const listaAdm = document.getElementById('lista-adm-users');
+            
+            listaGeral.innerHTML = '';
+            listaAdm.innerHTML = '';
+
+            Object.values(users).forEach(u => {
+                // Lista Grupo
+                if(u.cartelas) {
+                    listaGeral.innerHTML += `
+                        <div class="card-aposta">
+                            <strong>${u.nome}</strong><br>
+                            ${u.cartelas.join('<br>')}
+                        </div>`;
+                }
+
+                // Painel ADM
+                listaAdm.innerHTML += `
+                    <div class="card-aposta" style="display:flex; justify-content:space-between">
+                        <div>${u.nome}<br><small>${u.pago ? 'PAGO' : 'PENDENTE'}</small></div>
+                        <div>
+                            <button onclick="setPago('${u.cpf}', ${!u.pago})" class="btn" style="width:auto; padding:5px 10px; background:${u.pago ? 'green':'gray'}">✓</button>
+                            <button onclick="remover('${u.cpf}')" class="btn" style="width:auto; padding:5px 10px; background:red">X</button>
+                        </div>
+                    </div>`;
+            });
         });
     }
 
-    function renderParticipantes(users) {
-        const lista = document.getElementById('lista-geral-apostas');
-        lista.innerHTML = '';
-        Object.values(users).forEach(u => {
-            if(u.cartelas) {
-                let html = `<div class="card-aposta"><strong>${u.nome}</strong><br>`;
-                u.cartelas.forEach((c, idx) => {
-                    html += `Cartela ${idx+1}: <span style="color:var(--primary)">${c}</span><br>`;
-                });
-                html += `</div>`;
-                lista.innerHTML += html;
-            }
-        });
-    }
+    function setPago(cpf, status) { database.ref('participantes/' + cpf).update({ pago: status }); }
+    function remover(cpf) { if(confirm("Remover participante?")) database.ref('participantes/' + cpf).remove(); }
 
-    // --- FUNÇÕES DE ADM ---
-    function togglePagamento(cpf, status) {
-        db.ref('users/' + cpf).update({ pago: !status });
-    }
-
-    function excluirUser(cpf) {
-        if(confirm("Deseja realmente excluir este participante?")) {
-            db.ref('users/' + cpf).remove();
-        }
-    }
-
-    function renderADM(users) {
-        const lista = document.getElementById('adm-lista-usuarios');
-        lista.innerHTML = '<h4>Gerenciar Pagamentos</h4>';
-        Object.values(users).forEach(u => {
-            lista.innerHTML += `
-                <div class="card-aposta" style="display:flex; justify-content:space-between; align-items:center">
-                    <div>${u.nome} <br> <small>${u.cpf}</small></div>
-                    <div>
-                        <button onclick="togglePagamento('${u.cpf}', ${u.pago})" class="btn" style="width:auto; background:${u.pago ? 'green':'gray'}; color:white">
-                            ${u.pago ? 'PAGO' : 'PENDENTE'}
-                        </button>
-                        <button onclick="excluirUser('${u.cpf}')" class="btn" style="width:auto; background:red; color:white">X</button>
-                    </div>
-                </div>
-            `;
-        });
-    }
-
-    // --- HELPERS ---
-    function switchTab(tab) {
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.getElementById('tab-' + tab).classList.remove('hidden');
-        event.currentTarget.classList.add('active');
-    }
-
-    function toggleAuth(isReg) {
-        document.getElementById('login-box').classList.toggle('hidden', isReg);
-        document.getElementById('register-box').classList.toggle('hidden', !isReg);
-    }
-
-    function logout() { location.reload(); }
 </script>
-
 </body>
 </html>
